@@ -81,7 +81,7 @@ class Expression:
             if ch_expression.expression_get_type() == "open_delimiter":
                 stack.append(ch_expression)
             elif ch_expression.expression_get_type() == "closed_delimiter":
-                if stack.pop() != self.__corresponding_delimiter(ch_expression):
+                if stack.pop() != self.__get_corresponding_delimiter(ch_expression):
                     return False
                 
         return len(stack) == 0

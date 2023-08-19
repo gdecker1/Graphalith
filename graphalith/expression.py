@@ -1,13 +1,34 @@
 from collections import deque
+from enum import Enum
+
+class ExpressionType(Enum):
+        UNKNOWN = 0
+        NUMERIC = 1
+        ALPHA = 2
+        DELIMITER_OPEN = 3
+        DELIMITER_CLOSED  = 4
+        OPERATOR_ADD = 5
+        OPERATOR_SUBTRACT = 6
+        OPERATOR_MULTIPLY = 7
+        OPERATOR_DIVIDE = 8
+
 
 class Expression: 
+
     ######################################
     #            CONSTANTS               #
     ######################################
+
     DELIMITERS = {"<": ">", 
                   "(":")", 
                   "{": "}", 
                   "[":"]"}
+    
+    OPERATORS = {"+": ExpressionType.OPERATOR_ADD, 
+                 "-": ExpressionType.OPERATOR_SUBTRACT, 
+                 "*": ExpressionType.OPERATOR_MULTIPLY, 
+                 "/": ExpressionType.OPERATOR_DIVIDE}
+
     
     ######################################
     #            PRIVATE METHODS         #
@@ -16,13 +37,10 @@ class Expression:
     def __init__(self, **kwargs):
         self.name =  kwargs.get('name', "default")
         self.value = kwargs.get('value', "").strip()
-        self.type = kwargs.get('type', None)
+        self.type = self.__determine_type(kwargs.get('type', None))
 
         self.simplified = self.__is_simplified()
         self.valid = self.__is_valid_expression()
-
-        if self.type is None:
-            self.type = self.__determine_type()
 
     def __repr__(self):
         return f"""name: {self.name}
@@ -42,26 +60,29 @@ class Expression:
     def __determine_type(self) -> str:
 
         if self.value.isnumeric():
-            return "numeric"
+            return ExpressionType.NUMERIC
 
         if self.value.isalpha():
-            return "alpha"
+            return ExpressionType.ALPHA
         
         if self.value in Expression.DELIMITERS.keys():
-            return "open_delimiter"
+            return ExpressionType.DELIMITER_OPEN
         
         if self.value in Expression.DELIMITERS.values():
-            return "closed_delimiter"
+            return ExpressionType.DELIMITER_CLOSED
         
-        return "unknown"
+        if self.value in Expression.OPERATORS.keys():
+            return Expression.OPERATORS[self.value]
+        
+        return ExpressionType.UNKNOWN
         
     def __get_corresponding_delimiter(self) -> str:
-        if self.type == "open_delimiter":
+        if self.type == ExpressionType.DELIMITER_OPEN:
             if self.value not in Expression.DELIMITERS:
                 raise TypeError("__get_corresponding_delimiter: Open delimiter type error")
             return Expression.DELIMITERS[self.value]
         
-        if self.type == "closed_delimiter":
+        if self.type == ExpressionType.DELIMITER_CLOSED:
             REVERSED_DELIMITERS = {Expression.DELIMITERS[key]:key for key in Expression.DELIMITERS.keys()}
             if self.value not in Expression.DELIMITERS.values():
                 raise TypeError("__get_corresponding_delimiter: Closed delimiter type error")
@@ -78,9 +99,9 @@ class Expression:
 
         for ch in self.value:
             ch_expression = Expression(value = ch)
-            if ch_expression.expression_get_type() == "open_delimiter":
+            if ch_expression.expression_get_type() == ExpressionType.DELIMITER_OPEN:
                 stack.append(ch_expression)
-            elif ch_expression.expression_get_type() == "closed_delimiter":
+            elif ch_expression.expression_get_type() == ExpressionType.DELIMITER_CLOSED:
                 if stack.pop() != self.__get_corresponding_delimiter(ch_expression):
                     return False
                 
@@ -89,14 +110,16 @@ class Expression:
     def __is_valid_expression(self) -> bool:
         return self.__is_delimiter_balanced()
     
+
+    # ((3 - 2) + 1)/2
     def __evaluate_expression(self, expression):
-        return None
-       
-       
+        if self.type == ExpressionType.NUMERIC:
+            return Expression(value = self.value)
+     
 
 
     ######################################
-    #                 API                #
+    #                 API               #
     ######################################
     
     ## Evaluation

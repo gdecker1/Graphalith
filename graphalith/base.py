@@ -13,5 +13,24 @@ If you want to replace this with a Flask application run:
 and then choose `flask` as template.
 """
 
-# example constant variable
-NAME = "graphalith"
+from expression import*
+
+
+def processString(input_string : str) -> Expression:
+    exp = Expression(string=input_string)
+
+
+def main():
+    # prompt for input string
+    while True:
+        try:
+            input_string = input("Enter a string: ")
+            break
+        except ValueError:
+            print("Oops!  That was no valid string.  Try again...")
+    
+    processString(input_string)
+   
+
+if __name__ == "__main__":
+    main()

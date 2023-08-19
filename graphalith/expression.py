@@ -37,15 +37,13 @@ class Expression:
     def __init__(self, **kwargs):
         self.name =  kwargs.get('name', "default")
         self.value = kwargs.get('value', "").strip()
-        self.type = self.__determine_type(kwargs.get('type', None))
+        self.type = self.__determine_type()
 
         self.simplified = self.__is_simplified()
         self.valid = self.__is_valid_expression()
 
     def __repr__(self):
-        return f"""name: {self.name}
-                   value: {self.value} 
-                   type: {self.type}"""
+        return f"""\nvalue: {self.value}\ntype: {self.type}\nvalid: {self.valid}\n"""
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, Expression):
@@ -80,13 +78,13 @@ class Expression:
         if self.type == ExpressionType.DELIMITER_OPEN:
             if self.value not in Expression.DELIMITERS:
                 raise TypeError("__get_corresponding_delimiter: Open delimiter type error")
-            return Expression.DELIMITERS[self.value]
+            return Expression(value = Expression.DELIMITERS[self.value])
         
         if self.type == ExpressionType.DELIMITER_CLOSED:
             REVERSED_DELIMITERS = {Expression.DELIMITERS[key]:key for key in Expression.DELIMITERS.keys()}
             if self.value not in Expression.DELIMITERS.values():
                 raise TypeError("__get_corresponding_delimiter: Closed delimiter type error")
-            return REVERSED_DELIMITERS[self.value]
+            return Expression(value = REVERSED_DELIMITERS[self.value])
         
         raise TypeError("__get_corresponding_delimiter: not a delimiter")
 
@@ -95,14 +93,20 @@ class Expression:
         return True
     
     def __is_delimiter_balanced(self) -> bool:
+        if len(self.value) == 0:
+            return True
+        
+        if len(self.value) == 1:
+            return self.type != ExpressionType.DELIMITER_OPEN and self.type != ExpressionType.DELIMITER_CLOSED 
+        
         stack = deque()
 
         for ch in self.value:
             ch_expression = Expression(value = ch)
-            if ch_expression.expression_get_type() == ExpressionType.DELIMITER_OPEN:
+            if ch_expression.type == ExpressionType.DELIMITER_OPEN:
                 stack.append(ch_expression)
-            elif ch_expression.expression_get_type() == ExpressionType.DELIMITER_CLOSED:
-                if stack.pop() != self.__get_corresponding_delimiter(ch_expression):
+            elif ch_expression.type == ExpressionType.DELIMITER_CLOSED:
+                if stack.pop() != ch_expression.__get_corresponding_delimiter():
                     return False
                 
         return len(stack) == 0
@@ -111,12 +115,36 @@ class Expression:
         return self.__is_delimiter_balanced()
     
 
-    # ((3 - 2) + 1)/2
-    def __evaluate_expression(self, expression):
+    # ((3-2) + 1)/((2*3 - 2) + 2)
+    # 3-2
+
+    def __evaluate_expression(self):
+        exp = self.value
+
+        print(f'EVALING EXP: {exp}')
+
         if self.type == ExpressionType.NUMERIC:
             return Expression(value = self.value)
-     
+        
+        stack = deque()
 
+        i = 0
+        while i < len(exp):
+            ch = Expression(value = exp[i])
+            if ch.type == ExpressionType.DELIMITER_OPEN:
+                stack.append(i)
+
+            elif ch.type == ExpressionType.DELIMITER_CLOSED:
+                open_delim_index = stack.pop()
+                assert Expression(value = exp[open_delim_index]) == ch.__get_corresponding_delimiter()
+                inner_exp = Expression(value = exp[open_delim_index + 1: i]).expression_evaluate()
+                new_exp = Expression(value = exp[:open_delim_index] + inner_exp.value + exp[i + 1:]) 
+                return new_exp.expression_evaluate()
+            i += 1
+            
+        # TODO: IMPLEMENT EXPRESSION EVALUATION W/O PARENTHESES (WITHOUT "EVAL")
+        return Expression(value = str(eval(exp)))
+       
 
     ######################################
     #                 API               #
@@ -125,7 +153,7 @@ class Expression:
     ## Evaluation
     def expression_evaluate(self):
         if not self.valid: 
-            raise TypeError("Not a valid a expression.")
+            raise RuntimeError("Not a valid a expression.")
         return self.__evaluate_expression()
     
 

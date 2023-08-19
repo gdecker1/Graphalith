@@ -15,21 +15,17 @@ and then choose `flask` as template.
 
 from expression import*
 
-
-def processString(input_string : str) -> Expression:
-    exp = Expression(string=input_string)
-
-
 def main():
     # prompt for input string
     while True:
         try:
-            input_string = input("Enter a string: ")
-            break
+            input_string = input("Enter an expression string: ")
         except ValueError:
             print("Oops!  That was no valid string.  Try again...")
     
-    processString(input_string)
+        exp = Expression(value=input_string)
+        #print(exp)
+        print(exp.expression_evaluate())
    
 
 if __name__ == "__main__":

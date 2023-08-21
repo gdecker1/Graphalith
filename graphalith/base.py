@@ -13,20 +13,5 @@ If you want to replace this with a Flask application run:
 and then choose `flask` as template.
 """
 
-from expression import*
+from graphalith.expression import*
 
-def main():
-    # prompt for input string
-    while True:
-        try:
-            input_string = input("Enter an expression string: ")
-        except ValueError:
-            print("Oops!  That was no valid string.  Try again...")
-    
-        exp = Expression(value=input_string)
-        #print(exp)
-        print(exp.expression_evaluate())
-   
-
-if __name__ == "__main__":
-    main()

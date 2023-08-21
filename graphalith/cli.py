@@ -7,7 +7,7 @@ Be creative! do whatever you want!
 - Start a web application
 - Import things from your .base module
 """
-
+from graphalith.base import*
 
 def main():  # pragma: no cover
     """
@@ -25,4 +25,14 @@ def main():  # pragma: no cover
         * List all available tasks
         * Run an application (Flask, FastAPI, Django, etc.)
     """
-    print("This will do something")
+        # prompt for input string
+    while True:
+        try:
+            input_string = input("\nEnter an expression string: ")
+        except ValueError:
+            print("Oops!  That was no valid string.  Try again...")
+    
+        exp = Expression(value=input_string, auto_format=True)
+        print(exp)
+        print(exp.expression_evaluate())
+

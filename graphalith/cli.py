@@ -32,7 +32,6 @@ def main():  # pragma: no cover
         except ValueError:
             print("Oops!  That was no valid string.  Try again...")
     
-        exp = Expression(value=input_string, auto_format=True)
-        print(exp)
-        print(exp.expression_evaluate())
+        expression = Expression(value=input_string, auto_format=True, auto_eval=True)
+        print(expression)
 

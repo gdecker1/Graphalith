@@ -5,6 +5,8 @@ from graphalith.node import*
 import re
 
 class ExpressionType(Enum):
+        #TODO: Add nested expression types 
+
         """Enum class for expression types"""
         UNKNOWN = 0
         NUMERIC = 1
@@ -25,17 +27,14 @@ class Expression:
     #            CONSTANTS               #
     ######################################
 
-    DELIMITERS = {"<": ">", 
-                  "(":")", 
-                  "{": "}", 
-                  "[":"]"}
+    DELIMITERS = {"<": ">", "(":")", "{": "}",  "[":"]"}
     
     OPERATORS = {"+": ExpressionType.OPERATOR_ADD, 
                  "-": ExpressionType.OPERATOR_SUBTRACT, 
                  "*": ExpressionType.OPERATOR_MULTIPLY, 
                  "/": ExpressionType.OPERATOR_DIVIDE}
 
-    
+  
     ######################################
     #            PRIVATE METHODS         #
     ######################################
@@ -54,6 +53,7 @@ class Expression:
 
         self.valid = self.__is_valid_expression()
         self.simplified = self.__is_simplified()
+
 
     def __repr__(self):
         """Returns a string representation of the expression"""
@@ -100,7 +100,7 @@ class Expression:
 
     def __determine_type(self) -> ExpressionType:
         """Determines the type of the expression"""
-
+        # TODO: Use regex to determine raw expression
         remove_chars = "-/+*()[]<>{}"
         raw_exp = "".join([ch for ch in self.value if ch not in remove_chars and ch != " "])
 
@@ -229,132 +229,147 @@ class Expression:
         """Divides two expressions (x1 / x2)"""
         return x1/x2
     
-    
     def __join_expressions(self, expressions: list['Expression'], split: str = "") -> 'Expression':
         """Joins a list of expressions together"""
         return Expression(value = split.join([exp.value for exp in expressions]))
     
-    def __outermost_delimiter_index(expressions: list['Expression']) -> int:
-        """Returns the index of the FIRST outermost delimiter in a list of expressions"""
+    def __outermost_delimiter_indicies(self) -> tuple[int, int]:
+        """Returns the indices of the FIRST outermost delimiter in an expression"""
+        exp_lst = self.__construct_expression_list()
+        return Expression.__outermost_delimiter_indicies(exp_lst)
+    
+    def __outermost_delimiter_indicies(expressions: list['Expression']) -> tuple[int, int]:
+        """Returns the indices of the FIRST outermost delimiter in an expression list"""
         #TODO: Implement a more efficient algorithm + generalize
-
         stack = deque() # type: deque[int]
-        stack.append(0)
 
-        i = 1
+        start_index = None
+        i = 0
         while i < len(expressions):
             if expressions[i].type == ExpressionType.DELIMITER_OPEN:
+                if len(stack) == 0:
+                    start_index = i
                 stack.append(i)
             elif expressions[i].type == ExpressionType.DELIMITER_CLOSED:
                 open_delim_index = stack.pop()
                 assert expressions[open_delim_index] == expressions[i].__get_corresponding_delimiter() 
                 
-            if len(stack) == 0:
-                break
-            
+                if len(stack) == 0:
+                    break
             i += 1
 
-        return i
-
+        return (start_index, i)
     
-    def __construct_expression_tree(self) -> Node:
-        """Constructs an expression tree from the expression"""
-        # base case
-        if self.value is None or self.type == ExpressionType.NUMERIC:
-            return Node(val = self)
-        
-        expression = self.value
+    def __construct_expression_list(self) -> list['Expression']:
+        """Constructs a list of expressions from the expression
+        EX: 3 - 2 * (5 + 1) -> [3, -, 2, *, (, 5, +, 1, )]"""
+        #TODO: ADD SUPPORT FOR UNARY OPERATORS
 
+        # Base Case: Expression is a number or None
+        if self.value is None or self.type == ExpressionType.NUMERIC:
+            return [self]
+        
         # split the expression by operators and delimiters
         SPLITS = list(Expression.DELIMITERS.keys()) + list(Expression.DELIMITERS.values()) + list(Expression.OPERATORS.keys())
 
         # Combine the split points into a regex pattern
         split_pattern = "|".join(map(re.escape, SPLITS)) + "|[^" + "".join(map(re.escape, SPLITS)) + "]+"
 
-        result = re.findall(split_pattern, expression)
+        result = re.findall(split_pattern, self.value)
         result = [Expression(value = x) for x in result if len(x) > 0 and x != ' ']
 
+        return result
+    
+    def __construct_expression_tree(self) -> Node:
+        """Constructs an expression tree from the expression"""
+        # Base Case: Expression is a number or None
+        if self.value is None or self.type == ExpressionType.NUMERIC:
+            return Node(val = self)
+        
+        # Construct expression list from expression
+        exp_lst = self.__construct_expression_list()
+        assert len(exp_lst) >= 3
 
-        print(f'result: {[x.value for x in result]}')
-        # result list should at least 3 items (a operand b)
-        assert len(result) >= 3
+        #TODO: Collapase Case 1 and Case 2 to reduce code
+       
+        # Case 1: Expression is a single number. Return the number operated with remaining expression
+        if exp_lst[0].type == ExpressionType.NUMERIC:
+            # Ensure next item is an operator
+            # TODO: Add support for multiplication without * (ex: 3(2+1))
+            assert exp_lst[1].__is_operator()
+            parent = Node(val = exp_lst[1])
 
-        if result[0].type == ExpressionType.NUMERIC:
-            left_child = Node(val = result[0])
-
-            # ensure next item is an operator
-            assert result[1].__is_operator()
-
-            parent = Node(val = result[1])
-            right_child = self.__join_expressions(result[2:]).__construct_expression_tree()
+            left_child = Node(val = exp_lst[0])
+            right_child = self.__join_expressions(exp_lst[2:]).__construct_expression_tree()
 
             parent.left = left_child
             parent.right = right_child
+
             return parent
         
-        if result[0].__is_delimiter():
-            i = Expression.__outermost_delimiter_index(result)
+        # Case 2: Expression is a single delimiter. Construct tree with expression inside delimiter
+        if exp_lst[0].__is_delimiter():
+            i = Expression.__outermost_delimiter_indicies(exp_lst)[1]
 
-            new_exp = self.__join_expressions(result[1:i])  # type: Expression
+            new_exp = self.__join_expressions(exp_lst[1:i])  # type: Expression
             new_exp = new_exp.__construct_expression_tree() # type: Node
 
-            if i >= len(result) - 1:
+            # If no other expressions, return the tree from the expression inside the delimiter
+            if i >= len(exp_lst) - 1:
                 return new_exp
             
-            assert result[i+1].__is_operator() # ensure next item is an operator
-            parent = Node(val = result[i+1])
+            # Otherwise, construct tree with remaining expression
+            # TODO: Add support for multiplication without * (ex: 3(2+1))
+            assert exp_lst[i+1].__is_operator() 
+
+            parent = Node(val = exp_lst[i+1])
             parent.left = new_exp
-            parent.right = self.__join_expressions(result[i+2:]).__construct_expression_tree() # type: Node
+            parent.right = self.__join_expressions(exp_lst[i+2:]).__construct_expression_tree() # type: Node
             return parent
         
 
-        if result[0].__is_operator():
+        if exp_lst[0].__is_operator():
             # TODO: Implement unary operators (e.g. -5, -3*(2+1), -(3+2), +3 + 5)
             
             raise NotImplementedError("Expression.__construct_expression_tree: Unary operators not implemented")
 
         
     def __collapse_expression_tree(head: Node) -> Node:
+        """Collapses an expression tree into a single expression node (evaluates the expression)"""
+        # Base Case: Head is None
         if head is None:
             return None
         
+        # Base Case: Head is a number
         if head.val.type == ExpressionType.NUMERIC:
             assert head.left is None and head.right is None
             return head
 
-        elif head.val.__is_operator():
+        if head.val.__is_operator():
+            # Collapse left and right subtrees
             left_tree = Expression.__collapse_expression_tree(head.left)
             assert left_tree is not None 
             left_exp = left_tree.val
             assert left_exp.type == ExpressionType.NUMERIC
-
+   
             right_tree = Expression.__collapse_expression_tree(head.right)
             assert right_tree is not None 
             right_exp = right_tree.val
             assert right_exp.type == ExpressionType.NUMERIC
+     
+            # Construct new expression with collapsed subtrees + operator
+            OPERATOR_TO_FUNC = {ExpressionType.OPERATOR_ADD: Expression.__add,
+                                ExpressionType.OPERATOR_SUBTRACT: Expression.__subtract,
+                                ExpressionType.OPERATOR_MULTIPLY: Expression.__multiply,
+                                ExpressionType.OPERATOR_DIVIDE: Expression.__divide}
+            new_exp = left_exp.__perform_operation(right_exp, OPERATOR_TO_FUNC[head.val.type])
 
-            new_exp = None
-
-            if head.val.type == ExpressionType.OPERATOR_ADD:
-                new_exp = left_exp.__perform_operation(right_exp, Expression.__add)
-            elif head.val.type == ExpressionType.OPERATOR_SUBTRACT:
-                new_exp = left_exp.__perform_operation(right_exp, Expression.__subtract)
-            elif head.val.type == ExpressionType.OPERATOR_MULTIPLY:
-                new_exp = left_exp.__perform_operation(right_exp, Expression.__multiply)
-            elif head.val.type == ExpressionType.OPERATOR_DIVIDE:
-                new_exp = left_exp.__perform_operation(right_exp, Expression.__divide)
-            else:
-                raise RuntimeError("Unknown operator")
-            
             assert new_exp is not None
-
             return Node(val = new_exp)
-        else:
-            raise RuntimeError("Head value should be operator or number")
+    
+        raise RuntimeError("Head value should be operator or number")
     
     def __evaluate_expression(self) -> 'Expression':
-        expression = self.value
-
         # Construct expression tree
         root = self.__construct_expression_tree()
 
@@ -363,7 +378,6 @@ class Expression:
 
         return root.val
 
-       
 
     ######################################
     #                 API                #

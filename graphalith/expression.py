@@ -56,6 +56,8 @@ class Expression:
         self.simplified = self.__is_simplified()
 
     def __repr__(self):
+        """Returns a string representation of the expression"""
+
         evaluation = ""
         if self.evaluation is not None:
             evaluation = self.evaluation.value
@@ -65,6 +67,7 @@ class Expression:
         return f"""\nValue: {self.value}\nType: {self.type}\nValid: {self.valid}\nEvaluation: {evaluation}"""
 
     def __eq__(self, other) -> bool:
+        """Checks if two expressions are equal"""
         if not isinstance(other, Expression):
             return False
         
@@ -233,6 +236,8 @@ class Expression:
     
     def __outermost_delimiter_index(expressions: list['Expression']) -> int:
         """Returns the index of the FIRST outermost delimiter in a list of expressions"""
+        #TODO: Implement a more efficient algorithm + generalize
+
         stack = deque() # type: deque[int]
         stack.append(0)
 
@@ -304,41 +309,9 @@ class Expression:
         
 
         if result[0].__is_operator():
-            # TODO: Implement unary operators
-
-            # multiplier = "1"
-            # if result[0].type == ExpressionType.OPERATOR_SUBTRACT: 
-            #     multiplier = "-1"
-            # else:
-            #     raise NotImplementedError("Expression.__construct_expression_tree: operator not implemented")
+            # TODO: Implement unary operators (e.g. -5, -3*(2+1), -(3+2), +3 + 5)
             
-            # mult_exp = Expression(value = multiplier)
-
-            # # ensure next type is number or delimiter
-            # if result[1].type == ExpressionType.NUMERIC:
-            #     new_exp = mult_exp.__perform_operation(result[1], Expression.__multiply)
-
-            #     left_child = Node(val = new_exp)
-
-            #     parent = Node(val = Expression(value = "*"))
-
-            #     parent.right = self.__join_expressions(result[1:]).__construct_expression_tree()
-            #     return parent
-            # elif result[1].type == result[1].__is_delimiter():
-            #     left_child = Node(val = mult_exp)
-
-            #     parent = Node(val = Expression(value = "*"))
-
-            #     parent.left = left_child
-
-            #     i = Expression.__outermost_delimiter_index(result)
-            #     parent.right = self.__join_expressions(result[2:i]).__construct_expression_tree()
-            #     return parent
-
-            # else:
-            #     raise NotImplementedError("Expression.__construct_expression_tree: invalid expression")
-            
-            raise NotImplementedError("Expression.__construct_expression_tree: invalid expression")
+            raise NotImplementedError("Expression.__construct_expression_tree: Unary operators not implemented")
 
         
     def __collapse_expression_tree(head: Node) -> Node:
@@ -407,7 +380,7 @@ class Expression:
             raise RuntimeError("Not a valid a expression.")
         
         return self.__evaluate_expression()
-    
+
 
     ## GETTERS
     def expression_get_value(self) -> str:

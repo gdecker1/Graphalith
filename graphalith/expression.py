@@ -281,7 +281,12 @@ class Expression:
         return result
     
     def __construct_expression_tree(self) -> Node:
-        """Constructs an expression tree from the expression"""
+        """Constructs an expression tree from the expression
+        Runtime: O(n^2)
+        Space Comlexity: O(n)
+
+        TODO: Implement O(n) solution using stack
+        """
         # Base Case: Expression is a number or None
         if self.value is None or self.type == ExpressionType.NUMERIC:
             return Node(val = self)
